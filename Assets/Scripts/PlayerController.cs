@@ -23,6 +23,8 @@ public class PlayerController : MonoBehaviour
     private int count;
     private float movementX;
     private float movementY;
+    private int powerup;
+    private bool powerup_used;
 
     private enum state
      {
@@ -57,7 +59,8 @@ public class PlayerController : MonoBehaviour
         movementX = movementVector.x;
         movementY = movementVector.y;
         SetCountText();
-        if (movementY > 0)
+
+        if(movementY > 0)
         {
             keyShoot = true;
         }
@@ -96,6 +99,8 @@ public class PlayerController : MonoBehaviour
                     curState = state.shooting;
                     keyShoot = false;
                 }
+
+                powerup_used = false;
                 break;
             case state.shooting:
                 Vector3 movement = new Vector3(Mathf.Sin(angle_rad), 0.0f, Mathf.Cos(angle_rad));
@@ -107,18 +112,15 @@ public class PlayerController : MonoBehaviour
                 powerText.text = "POW:" + power.ToString();
                 if (keyShoot)
                 {
-                    rb.AddForce(movement * (power * 15));
+                    rb.AddForce(movement * (power * speed));
                     curState = state.moving;
                     keyShoot = false;
                 }
                 break;
             case state.moving:
                 arrow.set_render(false);
-                if(rb.velocity.y == 0.0f && keyShoot)
-                {
-                    rb.AddForce(new Vector3(0.0f, 200.0f, 0.0f));
-                    keyShoot = false;
-                }
+                powerup = 3;
+                check_powerups();
                 if(rb.velocity == new Vector3(0.0f, 0.0f, 0.0f))
                 {
                     curState = state.aiming;
@@ -139,8 +141,40 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private void hit_ball()
+    private void check_powerups()
     {
-        
+        switch(powerup)
+        {
+            case 1:
+                if (keyShoot && rb.velocity.y == 0.0f && !powerup_used)
+                {
+                    rb.AddForce(new Vector3(Mathf.Sin(angle_rad) * 5, 1000.0f, Mathf.Cos(angle_rad) * 5));
+                    keyShoot = false;
+                    powerup_used = true;
+                }
+            break;
+
+            case 2:
+                if (keyShoot && !powerup_used)
+                {
+                    rb.angularVelocity = new Vector3(0.0f, 0.0f, 0.0f);
+                    rb.velocity = new Vector3(0.0f, rb.velocity.y, 0.0f);
+                    keyShoot = false;
+                    powerup_used = true;
+                }
+            break;
+
+            case 3:
+                if (keyShoot && !powerup_used && rb.velocity.y != 0.0f)
+                {
+                    rb.velocity = new Vector3(rb.velocity.x, -20.0f, rb.velocity.z);
+                    keyShoot = false;
+                    powerup_used = true;
+                }
+            break;
+
+            default:
+                break;
+        }
     }
 }
