@@ -31,7 +31,7 @@
                 },
                 {
                     "name": "Launch",
-                    "type": "Button",
+                    "type": "Value",
                     "id": "a34e68a2-3400-4f95-b79b-abafabe975b5",
                     "expectedControlType": "Button",
                     "processors": "",

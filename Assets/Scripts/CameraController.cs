@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class CameraController : MonoBehaviour
 {
@@ -16,6 +17,23 @@ public class CameraController : MonoBehaviour
     // Update is called once per frame
     void LateUpdate()
     {
-        transform.position = player.transform.position + offset;
+        if (player.GetComponent<Rigidbody>().velocity == new Vector3(0.0f, 0.0f, 0.0f))
+        {
+            float angle = 0.0f;
+            if (Keyboard.current.qKey.isPressed)
+            {
+                angle--;
+            }
+            if (Keyboard.current.eKey.isPressed)
+            {
+                angle++;
+            }
+            transform.RotateAround(player.transform.position, Vector3.up, angle);
+            offset = transform.position - player.transform.position;
+        }
+        else
+        {
+            transform.position = player.transform.position + offset;
+        }
     }
 }

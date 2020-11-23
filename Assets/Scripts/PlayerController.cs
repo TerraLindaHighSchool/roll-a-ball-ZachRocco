@@ -3,14 +3,17 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using TMPro;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class PlayerController : MonoBehaviour
 {
     public float speed = 0;
     public TextMeshProUGUI countText;
     public TextMeshProUGUI powerText;
-    public GameObject winTextObject;
+    public TextMeshProUGUI winTextObject;
     public Arrow arrow;
+    public GameObject colorCircle;
 
     private float angle;
     private float angle_rad;
@@ -20,32 +23,52 @@ public class PlayerController : MonoBehaviour
     private bool keyShoot;
 
     private Rigidbody rb;
+    private MeshRenderer meshRenderer;
     private int count;
     private float movementX;
     private float movementY;
     private int powerup;
     private bool powerup_used;
+    private int shots;
 
-    private enum state
+    private enum BallColor
+    {
+        CYAN, RED, PURPLE, GREEN
+    };
+    private BallColor color;
+
+    private enum State
      {
-        aiming, shooting, moving
+        AIMING, SHOOTING, MOVING
      };
-    private state curState;
+    private State curState;
     
     void Start()
     {
         rb = GetComponent<Rigidbody>();
+        meshRenderer = GetComponent<MeshRenderer>();
         count = 0;
-        curState = state.aiming;
+        curState = State.AIMING;
         SetCountText();
-        winTextObject.SetActive(false);
+        winTextObject.gameObject.SetActive(false);
+    }
+
+    private void OnEnable()
+    {
+        
+    }
+
+    private void OnDisable()
+    {
+
     }
 
     private void Update()
     {
-        if(rb.velocity == new Vector3(0.0f, 0.0f, 0.0f))
+        switch_color();
+        if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
-            
+            keyShoot = true;
         }
     }
 
@@ -59,27 +82,22 @@ public class PlayerController : MonoBehaviour
         movementX = movementVector.x;
         movementY = movementVector.y;
         SetCountText();
-
-        if(movementY > 0)
-        {
-            keyShoot = true;
-        }
     }
 
     void SetCountText()
     {
-        countText.text = "Angle:" + angle.ToString();
-        if(count >= 8)
+        if (shots.ToString().Length == 1)
         {
-            winTextObject.SetActive(true);
+            countText.text = "SHOT \n00" + shots.ToString();
         }
+        else countText.text = "SHOT \n0" + shots.ToString();
     }
 
     void FixedUpdate()
     {
         switch(curState)
         {
-            case state.aiming:
+            case State.AIMING:
                 //pretty self explanitory, angle is increased and then converted to radians
                 angle += angle_increase * acceleration;
                 angle_rad = angle * Mathf.PI / 180;
@@ -96,13 +114,14 @@ public class PlayerController : MonoBehaviour
                 arrow.set_render(true);
                 if (keyShoot)
                 {
-                    curState = state.shooting;
+                    curState = State.SHOOTING;
                     keyShoot = false;
+                    power = 0;
                 }
 
                 powerup_used = false;
                 break;
-            case state.shooting:
+            case State.SHOOTING:
                 Vector3 movement = new Vector3(Mathf.Sin(angle_rad), 0.0f, Mathf.Cos(angle_rad));
                 power++;
                 if(power > 100)
@@ -113,31 +132,41 @@ public class PlayerController : MonoBehaviour
                 if (keyShoot)
                 {
                     rb.AddForce(movement * (power * speed));
-                    curState = state.moving;
+                    curState = State.MOVING;
                     keyShoot = false;
+                    shots++;
                 }
                 break;
-            case state.moving:
+            case State.MOVING:
                 arrow.set_render(false);
-                powerup = 3;
                 check_powerups();
                 if(rb.velocity == new Vector3(0.0f, 0.0f, 0.0f))
                 {
-                    curState = state.aiming;
+                    curState = State.AIMING;
                     keyShoot = false;
                 }
                 break;
         }
+
+        keyShoot = false;
     }
 
     private void OnTriggerEnter(Collider other)
     {
         if(other.gameObject.CompareTag("PickUp"))
         {
-            other.gameObject.SetActive(false);
-            count = count + 1;
+            winTextObject.text = "YOU FINISHED IN " + shots.ToString() + " SHOTS!";
+            winTextObject.gameObject.SetActive(true);
+        }
 
-            SetCountText();
+        if (other.gameObject.CompareTag("Powerup"))
+        {
+            Powerup powerupObject = other.gameObject.GetComponent<Powerup>();
+            if (powerupObject != null)
+            {
+                powerup = powerupObject.powerup;
+            }
+            powerup_used = false;
         }
     }
 
@@ -148,10 +177,11 @@ public class PlayerController : MonoBehaviour
             case 1:
                 if (keyShoot && rb.velocity.y == 0.0f && !powerup_used)
                 {
-                    rb.AddForce(new Vector3(Mathf.Sin(angle_rad) * 5, 1000.0f, Mathf.Cos(angle_rad) * 5));
+                    rb.AddForce(new Vector3(0.0f, 600.0f, 0.0f));
                     keyShoot = false;
                     powerup_used = true;
                 }
+                color = BallColor.RED;
             break;
 
             case 2:
@@ -162,7 +192,8 @@ public class PlayerController : MonoBehaviour
                     keyShoot = false;
                     powerup_used = true;
                 }
-            break;
+                color = BallColor.PURPLE;
+                break;
 
             case 3:
                 if (keyShoot && !powerup_used && rb.velocity.y != 0.0f)
@@ -171,9 +202,34 @@ public class PlayerController : MonoBehaviour
                     keyShoot = false;
                     powerup_used = true;
                 }
+                color = BallColor.GREEN;
             break;
 
             default:
+                color = BallColor.CYAN;
+                break;
+        }
+    }
+
+    private void switch_color()
+    {
+        switch(color)
+        {
+            case BallColor.RED:
+                meshRenderer.material.color = Color.red;
+                colorCircle.GetComponent<Image>().color = new Color32(200, 30, 30, 255);
+                break;
+            case BallColor.PURPLE:
+                meshRenderer.material.color = Color.magenta;
+                colorCircle.GetComponent<Image>().color = new Color32(200, 30, 200, 255);
+                break;
+            case BallColor.GREEN:
+                meshRenderer.material.color = Color.green;
+                colorCircle.GetComponent<Image>().color = new Color32(30, 200, 30, 255);
+                break;
+            default:
+                meshRenderer.material.color = new Color32(0, 220, 255, 255);
+                colorCircle.GetComponent<Image>().color = new Color32(0, 170, 200, 255);
                 break;
         }
     }
